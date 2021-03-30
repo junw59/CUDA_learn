@@ -46,12 +46,15 @@ void GenerateNumbers(int *number, int size)
 __global__ static void sumOfSquares(int *num, int* result, clock_t* time)
 {
     const int tid = threadIdx.x;
-    const int size = DATA_SIZE / THREAD_NUM;
+    // const int size = DATA_SIZE / THREAD_NUM;
     int sum = 0;
     int i;
     clock_t start;
     if(tid == 0) start = clock();
-    for(i = tid * size; i < (tid + 1) * size; i++) {
+    // for(i = tid * size; i < (tid + 1) * size; i++) {
+    //     sum += num[i] * num[i];
+    // }
+    for(i = tid; i < DATA_SIZE; i += THREAD_NUM) {
         sum += num[i] * num[i];
     }
 
