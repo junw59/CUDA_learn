@@ -49,8 +49,8 @@ __global__ static void sumOfSquares(int *num, int* result, clock_t* time)
     extern __shared__ int shared[];
     const int tid = threadIdx.x;
     const int bid = blockIdx.x;
-    // int sum = 0;
     int i;
+    int offset = 1, mask = 1;
     if(tid == 0) time[bid] = clock();
     shared[tid] = 0;
     for(i = bid * THREAD_NUM + tid; i < DATA_SIZE; i += BLOCK_NUM * THREAD_NUM) {
@@ -58,15 +58,22 @@ __global__ static void sumOfSquares(int *num, int* result, clock_t* time)
     }
 
     __syncthreads();
-    if(tid == 0){
-        for(i = 1; i < THREAD_NUM; i++){
-            shared[0] += shared[i];
+    while(offset < THREAD_NUM){
+        if((tid & mask) == 0){
+            // for(i = 1; i < THREAD_NUM; i++){
+            shared[tid] += shared[tid + offset];
+            // }
         }
-        result[bid] = shared[0];
+        offset += offset;
+        mask = offset + mask;
+        // result[bid] = shared[0];
+        __syncthreads();
     }
 
-    // result[bid * THREAD_NUM + tid] = sum;
-    if(tid == 0) time[bid + BLOCK_NUM] = clock();
+    if(tid == 0){
+        result[bid] = shared[0];
+        time[bid + BLOCK_NUM] = clock();
+    }
 }
 
 int main()
