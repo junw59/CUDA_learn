@@ -112,17 +112,28 @@ clock_t matmultCUDA(const float* a, int lda, const float* b, int ldb, float* c, 
     clock_t start, end;
 
     start = clock();
-    cudaMalloc((void**) &ac, sizeof(float) * n * n);
-    cudaMalloc((void**) &bc, sizeof(float) * n * n);
-    cudaMalloc((void**) &cc, sizeof(float) * n * n);
+    // cudaMalloc((void**) &ac, sizeof(float) * n * n);
+    // cudaMalloc((void**) &bc, sizeof(float) * n * n);
+    // cudaMalloc((void**) &cc, sizeof(float) * n * n);
 
-    cudaMemcpy2D(ac, sizeof(float) * n, a, sizeof(float) * lda, sizeof(float) * n, n, cudaMemcpyHostToDevice);
-    cudaMemcpy2D(bc, sizeof(float) * n, b, sizeof(float) * ldb, sizeof(float) * n, n, cudaMemcpyHostToDevice);
+    size_t pitch_a, pitch_b, pitch_c;
+    cudaMallocPitch((void**) &ac, &pitch_a, sizeof(float) * n, n);
+    cudaMallocPitch((void**) &bc, &pitch_b, sizeof(float) * n, n);
+    cudaMallocPitch((void**) &cc, &pitch_c, sizeof(float) * n, n);
+
+    // cudaMemcpy2D(ac, sizeof(float) * n, a, sizeof(float) * lda, sizeof(float) * n, n, cudaMemcpyHostToDevice);
+    // cudaMemcpy2D(bc, sizeof(float) * n, b, sizeof(float) * ldb, sizeof(float) * n, n, cudaMemcpyHostToDevice);
+    
+    cudaMemcpy2D(ac, pitch_a, a, sizeof(float) * lda, sizeof(float) * n, n, cudaMemcpyHostToDevice);
+    cudaMemcpy2D(bc, pitch_b, b, sizeof(float) * ldb, sizeof(float) * n, n, cudaMemcpyHostToDevice);
 
     // int blocks = (n + NUM_THREADS - 1) / NUM_THREADS;
-    matMultCUDA<<<n, NUM_THREADS, sizeof(float) * n>>> (ac, n, bc, n, cc, n, n);
+    // matMultCUDA<<<n, NUM_THREADS, sizeof(float) * n>>> (ac, n, bc, n, cc, n, n);
+    matMultCUDA<<<n, NUM_THREADS, sizeof(float) * n>>> (ac, pitch_a / sizeof(float), bc, pitch_b / sizeof(float), cc, pitch_c / sizeof(float), n);
 
-    cudaMemcpy2D(c, sizeof(float) * ldc, cc, sizeof(float) * n, sizeof(float) * n, n, cudaMemcpyDeviceToHost);
+    // cudaMemcpy2D(c, sizeof(float) * ldc, cc, sizeof(float) * n, sizeof(float) * n, n, cudaMemcpyDeviceToHost);
+
+    cudaMemcpy2D(c, sizeof(float) * ldc, cc, pitch_c, sizeof(float) * n, n, cudaMemcpyDeviceToHost);
 
     cudaFree(ac);
     cudaFree(bc);
