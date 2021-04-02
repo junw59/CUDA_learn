@@ -77,25 +77,32 @@ void compare_mat(const float* a, int lda, const float* b, int ldb, int n)
 
 __global__ static void matMultCUDA(const float* a, size_t lda, const float* b, size_t ldb, float* c, size_t ldc, int n)
 {
+    extern __shared__ float data[];
     const int tid = threadIdx.x;
-    const int bid = blockIdx.x;
-    const int idx = bid * blockDim.x + tid;
-    const int row = idx / n;
-    const int column = idx % n;
-    int i;
+    // const int bid = blockIdx.x;
+    // const int idx = bid * blockDim.x + tid;
+    const int row = blockIdx.x;
+    // const int column = idx % n;
+    int i, j;
 
-    if(row < n && column < n) {
+    for(i = tid; i < n; i += blockDim.x) {
+        data[i] = a[row * lda + i];
+    }
+
+    __syncthreads();
+
+    for(j = tid; j < n; j += blockDim.x) {
         float t = 0;
         float y = 0;
         for(i = 0; i < n; i++) {
             // t += a[row * lda + i] * b[i * ldb + column];
             float r;
-            y -= a[row * lda + i] * b[i * ldb + column];
+            y -= data[i] * b[i * ldb + j];
             r = t - y;
             y = (r - t) + y;
             t = r;
         }
-        c[row * ldc + column] = t;
+        c[row * ldc + j] = t;
     }
 }
 
@@ -112,8 +119,8 @@ clock_t matmultCUDA(const float* a, int lda, const float* b, int ldb, float* c, 
     cudaMemcpy2D(ac, sizeof(float) * n, a, sizeof(float) * lda, sizeof(float) * n, n, cudaMemcpyHostToDevice);
     cudaMemcpy2D(bc, sizeof(float) * n, b, sizeof(float) * ldb, sizeof(float) * n, n, cudaMemcpyHostToDevice);
 
-    int blocks = (n + NUM_THREADS - 1) / NUM_THREADS;
-    matMultCUDA<<<blocks * n, NUM_THREADS>>> (ac, n, bc, n, cc, n, n);
+    // int blocks = (n + NUM_THREADS - 1) / NUM_THREADS;
+    matMultCUDA<<<n, NUM_THREADS, sizeof(float) * n>>> (ac, n, bc, n, cc, n, n);
 
     cudaMemcpy2D(c, sizeof(float) * ldc, cc, sizeof(float) * n, sizeof(float) * n, n, cudaMemcpyDeviceToHost);
 
