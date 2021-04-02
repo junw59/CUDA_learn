@@ -90,19 +90,19 @@ __global__ static void matMultCUDA(const float* a, size_t lda, const float* b, s
     float comp = 0;
 
     for(j = 0; j < n; j += BLOCK_SIZE) {
-        if(tidr + bidr < n && tidc + j < n) {
+        // if(tidr + bidr < n && tidc + j < n) {
             matA[tidr][tidc] = a[(tidr + bidr) * lda + tidc + j];
-        }
-        else {
-            matA[tidr][tidc] = 0;
-        }
+        // }
+        // else {
+        //     matA[tidr][tidc] = 0;
+        // }
 
-        if(tidr + j < n && tidc + bidc < n) {
+        // if(tidr + j < n && tidc + bidc < n) {
             matB[tidr][tidc] = b[(tidr + j) * ldb + tidc + bidc];
-        }
-        else {
-            matB[tidr][tidc] = 0;
-        }
+        // }
+        // else {
+        //     matB[tidr][tidc] = 0;
+        // }
 
         __syncthreads();
 
@@ -116,15 +116,16 @@ __global__ static void matMultCUDA(const float* a, size_t lda, const float* b, s
 
         __syncthreads();
     }
-    if(tidr + bidr < n && tidc + bidc < n) {
+    // if(tidr + bidr < n && tidc + bidc < n) {
         c[(tidr + bidr) * ldc + tidc + bidc] = results;
-    }
+    // }
 }
 
 clock_t matmultCUDA(const float* a, int lda, const float* b, int ldb, float* c, int ldc, int n)
 {
     float *ac, *bc, *cc;
     clock_t start, end;
+    int newn = ((n + BLOCK_SIZE - 1) / BLOCK_SIZE) * BLOCK_SIZE;
 
     start = clock();
     // cudaMalloc((void**) &ac, sizeof(float) * n * n);
@@ -132,9 +133,12 @@ clock_t matmultCUDA(const float* a, int lda, const float* b, int ldb, float* c, 
     // cudaMalloc((void**) &cc, sizeof(float) * n * n);
 
     size_t pitch_a, pitch_b, pitch_c;
-    cudaMallocPitch((void**) &ac, &pitch_a, sizeof(float) * n, n);
-    cudaMallocPitch((void**) &bc, &pitch_b, sizeof(float) * n, n);
-    cudaMallocPitch((void**) &cc, &pitch_c, sizeof(float) * n, n);
+    cudaMallocPitch((void**) &ac, &pitch_a, sizeof(float) * newn, newn);
+    cudaMallocPitch((void**) &bc, &pitch_b, sizeof(float) * newn, newn);
+    cudaMallocPitch((void**) &cc, &pitch_c, sizeof(float) * newn, newn);
+
+    cudaMemset(ac, 0, pitch_a * newn);
+    cudaMemset(bc, 0, pitch_b * newn);
 
     // cudaMemcpy2D(ac, sizeof(float) * n, a, sizeof(float) * lda, sizeof(float) * n, n, cudaMemcpyHostToDevice);
     // cudaMemcpy2D(bc, sizeof(float) * n, b, sizeof(float) * ldb, sizeof(float) * n, n, cudaMemcpyHostToDevice);
